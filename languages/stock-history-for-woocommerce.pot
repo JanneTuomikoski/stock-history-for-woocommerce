@@ -1,0 +1,105 @@
+# Copyright (C) 2026 Janne Tuomikoski
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Stock History for WooCommerce 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/JanneTuomikoski/stock-history-for-woocommerce/issues\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-05-26T00:00:00+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Domain: stock-history-for-woocommerce\n"
+"X-Generator: Manual\n"
+
+#: stock-history-for-woocommerce.php:58
+msgid "Stock History for WooCommerce requires WooCommerce to be installed and activated."
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:444
+#: includes/class-shfw-stock-history.php:464
+msgid "Stock History"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:468
+msgid "No stock changes have been recorded for this product yet."
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:482
+msgid "Date"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:483
+msgid "Change"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:484
+msgid "New stock"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:485
+msgid "Source"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:486
+msgid "User"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:487
+msgid "Note"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:501
+msgid "« Newest"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:506
+msgid "Older →"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:533
+#: includes/class-shfw-stock-history.php:631
+msgid "Click to add a note…"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:542
+msgid "Manual"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:549
+msgid "Order"
+msgstr ""
+
+#. translators: %d: order ID
+#: includes/class-shfw-stock-history.php:554
+msgid "Order #%d (refund)"
+msgstr ""
+
+#. translators: %d: order ID
+#: includes/class-shfw-stock-history.php:557
+msgid "Order #%d (restored)"
+msgstr ""
+
+#. translators: %d: order ID
+#: includes/class-shfw-stock-history.php:560
+msgid "Order #%d"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:569
+msgid "System"
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:632
+msgid "Failed to save note. Please try again."
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:670
+msgid "Insufficient permissions."
+msgstr ""
+
+#: includes/class-shfw-stock-history.php:699
+msgid "Insufficient permissions for this product."
+msgstr ""
