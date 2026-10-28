@@ -567,7 +567,10 @@ class SHFW_Stock_History {
 				if ($order_id <= 0) {
 					return esc_html__('Order', 'stock-history-for-woocommerce');
 				}
-				$link = get_edit_post_link($order_id);
+				$order = wc_get_order($order_id);
+				$order_type = $order ? get_post_type_object($order->get_type()) : null;
+				$can_edit = $order_type && (current_user_can($order_type->cap->edit_post, $order_id) || current_user_can('manage_woocommerce'));
+				$link = $can_edit ? $order->get_edit_order_url() : '';
 				if ('refund' === $row->source) {
 					/* translators: %d: order ID */
 					$label = sprintf(__('Order #%d (refund)', 'stock-history-for-woocommerce'), $order_id);

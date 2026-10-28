@@ -31,6 +31,13 @@ function get_post_meta($id, $key, $single = false) { return $GLOBALS['stocks'][$
 function get_current_user_id() { return 42; }
 function current_time($format, $gmt = false) { return gmdate('Y-m-d H:i:s'); }
 function wc_get_product($id) { return $GLOBALS['products'][$id] ?? false; }
+if (!getenv('SHFW_WC_SOURCE_DIR')) {
+    function wc_get_order($id) { return $GLOBALS['orders'][$id] ?? false; }
+}
+function did_action($name) { return 1; }
+function WC() { return (object) array('order_factory' => new SHFW_Test_Order_Factory()); }
+class SHFW_Test_Order_Factory { public function get_order($id) { return $GLOBALS['orders'][$id] ?? false; } }
+function get_post_type_object($type) { return (object) array('cap' => (object) array('edit_post' => 'edit_shop_order')); }
 function wc_stock_amount($amount) { return (int) $amount; }
 function is_wp_error($value) { return false; }
 function absint($value) { return abs((int) $value); }
@@ -114,9 +121,11 @@ class WC_Order_Item_Product {
 }
 class WC_Order {
     public $id, $items;
-    public function __construct($id, $items) { $this->id = $id; $this->items = $items; }
+    public function __construct($id, $items) { $this->id = $id; $this->items = $items; $GLOBALS['orders'][$id] = $this; }
     public function get_id() { return $this->id; }
     public function get_items() { return $this->items; }
+    public function get_type() { return 'shop_order'; }
+    public function get_edit_order_url() { return $GLOBALS['hpos'] ? 'https://example.test/wp-admin/admin.php?page=wc-orders&action=edit&id=' . $this->id : 'https://example.test/wp-admin/post.php?post=' . $this->id . '&action=edit'; }
     public function add_order_note(...$args) {}
 }
 class WC_Data_Store {
@@ -192,6 +201,7 @@ function resetScenario() {
     $_GET = $_POST = array();
     $GLOBALS['wpdb'] = new AuditDatabase();
     $GLOBALS['stocks'] = $GLOBALS['products'] = [];
+    $GLOBALS['orders'] = array();
     $GLOBALS['nonceValid'] = true;
     $GLOBALS['permissions'] = ['edit_products' => true, 'edit_post:10' => true];
     $GLOBALS['posts'] = [10 => (object) ['post_type' => 'product', 'post_parent' => 0]];
