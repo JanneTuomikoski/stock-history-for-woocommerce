@@ -7,3 +7,5 @@ To repeat the checks with official WooCommerce functions, set `SHFW_WC_SOURCE_DI
 The isolated checks supplement full WordPress/WooCommerce integration testing; they do not replace it.
 
 For browser-DOM note editor regressions, run `npm ci --ignore-scripts` and `npm test` using Node 20.19+, 22.13+, or 24+. jQuery and jsdom are development-only dependencies; the installed plugin continues to use WordPress-provided jQuery without a build step.
+
+`tests/integration-storage.php` checks real wpdb persistence and recovery against connection-scoped temporary tables. Run it through a local WordPress WP-CLI installation with `SHFW_TEST_TEMP_TABLES=1`, `--skip-plugins --skip-themes` and `--exec='define("DISABLE_WP_CRON", true);'`. It requires a local database and no external object cache. Its isolated cache and temporary tables are removed on completion; it never creates orders or changes application tables.

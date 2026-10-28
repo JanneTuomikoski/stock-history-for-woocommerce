@@ -10,6 +10,7 @@ namespace Automattic\WooCommerce\Internal\Orders {
 }
 namespace {
 define('ABSPATH', __DIR__ . '/wp-stub/');
+define('ARRAY_A', 'ARRAY_A');
 function shfw_test_contains($text, $part) { return strpos($text, $part) !== false; }
 $GLOBALS['hooks'] = $GLOBALS['stocks'] = $GLOBALS['products'] = $GLOBALS['posts'] = $GLOBALS['options'] = [];
 $GLOBALS['permissions'] = ['edit_products' => true, 'edit_post:10' => true];
@@ -27,6 +28,13 @@ function do_action($name, ...$args) {
 function apply_filters($name, $value, ...$args) { return $value; }
 function get_option($name, $default = false) { return $GLOBALS['options'][$name] ?? ($name === 'woocommerce_manage_stock' ? 'yes' : $default); }
 function update_option($name, $value, $autoload = null) { $GLOBALS['options'][$name] = $value; return true; }
+function add_option($name, $value, $deprecated = '', $autoload = false) { if (!empty($GLOBALS['failOptionWrites']) || isset($GLOBALS['options'][$name])) return false; $GLOBALS['options'][$name] = $value; return true; }
+function delete_option($name) { if (!empty($GLOBALS['failAcknowledgement']) && strpos($name, 'shfw_pending_') === 0) return false; $had = isset($GLOBALS['options'][$name]); unset($GLOBALS['options'][$name]); return $had; }
+function wp_json_encode($value) { return json_encode($value); }
+function wp_generate_uuid4() { return sprintf('%08x-0000-4000-8000-%012x', ++$GLOBALS['uuid'], $GLOBALS['uuid']); }
+function wp_next_scheduled($hook) { return $GLOBALS['scheduled'][$hook] ?? false; }
+function wp_schedule_single_event($time, $hook) { $GLOBALS['scheduled'][$hook] = $time; return true; }
+function get_post_type($id) { $post = get_post($id); return $post ? $post->post_type : false; }
 function get_post_meta($id, $key, $single = false) { return $GLOBALS['stocks'][$id] ?? ''; }
 function get_current_user_id() { return 42; }
 function current_time($format, $gmt = false) { return gmdate('Y-m-d H:i:s'); }
@@ -140,11 +148,18 @@ class WC_Data_Store {
 }
 class AuditDatabase {
     public string $prefix = 'audit_';
+    public string $options = 'audit_options';
     public array $rows = [];
+    public array $schemaColumns = [];
+    public bool $failSchema = false;
+    public bool $failRead = false;
     public string $last_error = '';
     public bool $failInsert = false;
     public ?string $lastNoteAttempt = null;
     public function get_charset_collate() { return 'DEFAULT CHARACTER SET utf8mb4'; }
+    public function esc_like($value) { return addcslashes($value, '_%\\'); }
+    public function suppress_errors($suppress = true) { return false; }
+    public function get_col($sql) { return $this->schemaColumns; }
     public function prepare($sql, ...$args) {
         $i = 0;
         return preg_replace_callback('/%[dfs]/', function ($match) use (&$i, $args) {
@@ -154,9 +169,12 @@ class AuditDatabase {
     }
     public function insert($table, $row, $formats = null) {
         if ($this->failInsert) { $this->last_error = 'Injected disk full'; return false; }
+        foreach ($this->rows as $existing) if (isset($row['event_key'], $existing['event_key']) && $existing['event_key'] === $row['event_key']) return false;
+        $this->last_error = '';
         $row['id'] = count($this->rows) + 1; $this->rows[$row['id']] = $row; return 1;
     }
     public function get_var($sql) {
+        if (shfw_test_contains($sql, 'WHERE event_key')) { preg_match("/event_key = '([^']+)'/", $sql, $key); foreach ($this->rows as $row) if (($row['event_key'] ?? '') === $key[1]) return $row['id']; return null; }
         if (shfw_test_contains($sql, 'SELECT product_id')) {
             preg_match('/WHERE id = (\d+)/', $sql, $id); return $this->rows[(int) $id[1]]['product_id'] ?? null;
         }
@@ -171,7 +189,15 @@ class AuditDatabase {
         }
         return null;
     }
-    public function get_results($sql) {
+    public function get_results($sql, $format = null) {
+        $this->last_error = '';
+        if (shfw_test_contains($sql, 'SHOW INDEX')) return $this->schemaColumns ? array(array('Column_name' => 'event_key')) : array();
+        if (shfw_test_contains($sql, 'FROM audit_options')) {
+            if ($this->failRead) { $this->last_error = 'Injected read failure'; return null; }
+            preg_match('/LIMIT (\d+)/', $sql, $limit); $rows = array();
+            foreach ($GLOBALS['options'] as $name => $value) if (strpos($name, 'shfw_pending_') === 0) $rows[] = (object) array('option_name' => $name, 'option_value' => $value);
+            return array_slice($rows, 0, isset($limit[1]) ? (int) $limit[1] : 100);
+        }
         preg_match('/product_id = (\d+)/', $sql, $product);
         $rows = array_reverse(array_values(array_filter($this->rows, static fn ($row) => $row['product_id'] === (int) $product[1])));
         preg_match('/LIMIT (\d+)(?: OFFSET (\d+))?/', $sql, $page);
@@ -202,6 +228,9 @@ function resetScenario() {
     $GLOBALS['wpdb'] = new AuditDatabase();
     $GLOBALS['stocks'] = $GLOBALS['products'] = [];
     $GLOBALS['orders'] = array();
+    $GLOBALS['options'] = $GLOBALS['scheduled'] = array();
+    $GLOBALS['uuid'] = $GLOBALS['dbDeltaCalls'] = 0;
+    $GLOBALS['failOptionWrites'] = $GLOBALS['failAcknowledgement'] = false;
     $GLOBALS['nonceValid'] = true;
     $GLOBALS['permissions'] = ['edit_products' => true, 'edit_post:10' => true];
     $GLOBALS['posts'] = [10 => (object) ['post_type' => 'product', 'post_parent' => 0]];

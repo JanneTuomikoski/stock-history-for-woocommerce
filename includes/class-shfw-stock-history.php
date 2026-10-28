@@ -9,10 +9,12 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+require_once __DIR__ . '/class-shfw-history-storage.php';
+
 class SHFW_Stock_History {
 
 	const HANDLE              = 'shfw-admin-stock-history';
-	const DB_VERSION          = '1.0.0';
+	const DB_VERSION          = '1.0.1';
 	const DB_VERSION_OPTION   = 'shfw_db_version';
 	const TABLE_SUFFIX        = 'shfw_history';
 	const NONCE_ACTION        = 'shfw_update_note';
@@ -28,7 +30,8 @@ class SHFW_Stock_History {
 	private static $before_stock_cache = array();
 
 	public static function init() {
-		add_action('admin_init', array(__CLASS__, 'maybe_upgrade_table'));
+		add_action('init', array(__CLASS__, 'maybe_upgrade_table'), 5);
+		SHFW_History_Storage::register();
 
 		// Direct stock updates (manual edits, REST API, programmatic).
 		add_action('woocommerce_product_before_set_stock',   array(__CLASS__, 'capture_before_stock'),    10, 1);
@@ -91,7 +94,9 @@ class SHFW_Stock_History {
 			user_id BIGINT UNSIGNED NULL DEFAULT NULL,
 			note TEXT NULL DEFAULT NULL,
 			created_at DATETIME NOT NULL,
+			event_key CHAR(36) NULL DEFAULT NULL,
 			PRIMARY KEY  (id),
+			UNIQUE KEY event_key (event_key),
 			KEY product_id (product_id),
 			KEY created_at (created_at),
 			KEY product_created (product_id, created_at)
@@ -100,9 +105,13 @@ class SHFW_Stock_History {
 		try {
 			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 			dbDelta($sql);
+			if (!SHFW_History_Storage::schema_ready()) {
+				throw new RuntimeException('The history schema could not be verified.');
+			}
 			update_option(self::DB_VERSION_OPTION, self::DB_VERSION, false);
+			SHFW_History_Storage::clear_health_if_recovered();
 		} catch (Throwable $e) {
-			error_log('[SHFW] table install failed: ' . $e->getMessage());
+			SHFW_History_Storage::report_failure('schema');
 		}
 	}
 
@@ -377,33 +386,17 @@ class SHFW_Stock_History {
 	}
 
 	private static function insert_entry(array $row) {
-		global $wpdb;
-
-		$wpdb->insert(
-			self::table_name(),
-			array(
-				'product_id' => (int) $row['product_id'],
-				'qty_before' => is_null($row['qty_before']) ? null : (float) $row['qty_before'],
-				'qty_after'  => (float) $row['qty_after'],
-				'qty_delta'  => (float) $row['qty_delta'],
-				'source'     => (string) $row['source'],
-				'source_ref' => is_null($row['source_ref']) ? null : (int) $row['source_ref'],
-				'user_id'    => is_null($row['user_id'])    ? null : (int) $row['user_id'],
-				'note'       => null,
-				'created_at' => current_time('mysql', true),
-			),
-			array(
-				'%d',
-				is_null($row['qty_before']) ? null : '%f',
-				'%f',
-				'%f',
-				'%s',
-				is_null($row['source_ref']) ? null : '%d',
-				is_null($row['user_id'])    ? null : '%d',
-				'%s',
-				'%s',
-			)
-		);
+		return SHFW_History_Storage::save(array(
+			'product_id' => (int) $row['product_id'],
+			'qty_before' => is_null($row['qty_before']) ? null : (float) $row['qty_before'],
+			'qty_after'  => (float) $row['qty_after'],
+			'qty_delta'  => (float) $row['qty_delta'],
+			'source'     => (string) $row['source'],
+			'source_ref' => is_null($row['source_ref']) ? null : (int) $row['source_ref'],
+			'user_id'    => is_null($row['user_id'])    ? null : (int) $row['user_id'],
+			'note'       => null,
+			'created_at' => current_time('mysql', true),
+		));
 	}
 
 	public static function render_product_data_tab($tabs) {

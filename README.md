@@ -33,6 +33,10 @@ Sources:
 
 History rows live in a custom table, `{prefix}shfw_history`, created on activation. The table is dropped on uninstall (not on deactivation).
 
+Schema setup is verified before its version is saved and retries on subsequent requests if setup fails. If a history write fails, the stock update can still complete: its original audit event is queued in a separate non-autoloaded WordPress option and retried by the `shfw_retry_history` cron event. A unique event key prevents duplicate rows if a retry loses its acknowledgement. Recovery does not recreate history for deleted products.
+
+Administrators see a persistent warning while logging needs attention. Correct database permissions/storage errors and allow WordPress cron to run, or run `wp cron event run shfw_retry_history`. A warning marked unrecoverable means even the recovery event could not be saved; investigate the server logs and any missing history before acknowledging it with `wp option delete shfw_logging_health`. Missing historical events are not fabricated or backfilled.
+
 Schema:
 
 ```sql
@@ -47,7 +51,9 @@ CREATE TABLE {prefix}shfw_history (
     user_id     BIGINT UNSIGNED NULL,
     note        TEXT NULL,
     created_at  DATETIME NOT NULL,
+    event_key   CHAR(36) NULL,
     PRIMARY KEY (id),
+    UNIQUE KEY event_key (event_key),
     KEY product_id (product_id),
     KEY created_at (created_at),
     KEY product_created (product_id, created_at)
@@ -73,12 +79,21 @@ To translate, generate a `.po` / `.mo` pair using [Poedit](https://poedit.net/) 
 No. Only changes made after activation are recorded.
 
 **Are variations tracked?**
-Yes - each variation has its own history under its variation ID.
+Yes. Independently managed variations have their own history. Inherited stock is recorded against the parent inventory and shown as shared history in the variation editor.
 
 **Can I export the history?**
 Not in the plugin UI yet. The data lives in a regular database table and can be read with any tool that talks to your WordPress database.
 
 ## Changelog
+
+### 1.0.1
+- Record order line quantity edits and removals with their order reference.
+- Retain genuine repeated stock events instead of suppressing them by time/quantity.
+- Add variation previews and permission-checked pagination; resolve shared inventory to its stock owner.
+- Use WooCommerce order edit URLs for HPOS and legacy storage, with order permissions checked.
+- Apply Unicode-safe note limits and preserve drafts after failed saves.
+- Verify schema installation, queue failed history writes, and retry them idempotently with a persistent admin health warning.
+- Add PHP hook/persistence regressions and real DOM note editor checks. WooCommerce 9.1+ is required for the per-item restoration hook.
 
 ### 1.0.0
 - Initial release.

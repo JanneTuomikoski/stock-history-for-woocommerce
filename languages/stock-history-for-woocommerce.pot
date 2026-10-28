@@ -2,7 +2,7 @@
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Stock History for WooCommerce 1.0.0\n"
+"Project-Id-Version: Stock History for WooCommerce 1.0.1\n"
 "Report-Msgid-Bugs-To: https://github.com/JanneTuomikoski/stock-history-for-woocommerce/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -119,4 +119,7 @@ msgstr ""
 
 #: includes/class-shfw-stock-history.php:699
 msgid "Insufficient permissions for this product."
+msgstr ""
+
+msgid "Stock History logging needs attention. Some changes may be missing. Pending entries will retry automatically; check database permissions and error logs."
 msgstr ""

@@ -3,7 +3,7 @@
  * Plugin Name:       Stock History for WooCommerce
  * Plugin URI:        https://github.com/JanneTuomikoski/stock-history-for-woocommerce
  * Description:       Audit log of every WooCommerce stock change - manual edits, order reductions, and order restorations. Adds a Stock History tab to the product edit screen with inline notes.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Requires at least: 6.7
  * Requires PHP:      7.4
  * Author:            Janne Tuomikoski
@@ -13,6 +13,7 @@
  * Text Domain:       stock-history-for-woocommerce
  * Domain Path:       /languages
  * Requires Plugins:  woocommerce
+ * WC requires at least: 9.1
  *
  * @package SHFW
  */
@@ -21,7 +22,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-define('SHFW_VERSION', '1.0.0');
+define('SHFW_VERSION', '1.0.1');
 define('SHFW_PLUGIN_FILE', __FILE__);
 define('SHFW_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SHFW_PLUGIN_URL', plugin_dir_url(__FILE__));
