@@ -19,7 +19,6 @@ class SHFW_Stock_History {
 	const NOTE_AJAX_ACTION    = 'shfw_update_note';
 	const PAGE_SIZE           = 50;
 	const NOTE_MAX_LENGTH     = 500;
-	const IDEMPOTENCY_SECONDS = 5;
 
 	/**
 	 * Per-request cache of pre-save stock quantities, keyed by product/variation ID.
@@ -244,9 +243,6 @@ class SHFW_Stock_History {
 			}
 
 			$order_id = $order->get_id();
-			if (self::is_duplicate_recent($product_id, 'order_reduce', $order_id, $qty_after)) {
-				return;
-			}
 
 			self::insert_entry(array(
 				'product_id' => $product_id,
@@ -289,9 +285,6 @@ class SHFW_Stock_History {
 			}
 
 			$order_id = $order->get_id();
-			if (self::is_duplicate_recent($product_id, 'order_restore', $order_id, $qty_after)) {
-				return;
-			}
 
 			self::insert_entry(array(
 				'product_id' => $product_id,
@@ -340,9 +333,6 @@ class SHFW_Stock_History {
 			}
 
 			$order_id = $order->get_id();
-			if (self::is_duplicate_recent($product_id, 'refund', $order_id, $qty_after)) {
-				return;
-			}
 
 			self::insert_entry(array(
 				'product_id' => $product_id,
@@ -376,48 +366,6 @@ class SHFW_Stock_History {
 
 		global $wpdb;
 		$wpdb->delete(self::table_name(), array('product_id' => $post_id), array('%d'));
-	}
-
-	/**
-	 * Idempotency guard - skip insert if an identical row was written within the last few seconds.
-	 * Protects against WC re-processing orders across status transitions.
-	 */
-	private static function is_duplicate_recent($product_id, $source, $source_ref, $qty_after) {
-		global $wpdb;
-		$table = self::table_name();
-
-		if (is_null($source_ref)) {
-			$sql = $wpdb->prepare(
-				"SELECT id FROM {$table}
-				 WHERE product_id = %d
-				   AND source = %s
-				   AND source_ref IS NULL
-				   AND qty_after = %f
-				   AND created_at >= (UTC_TIMESTAMP() - INTERVAL %d SECOND)
-				 LIMIT 1",
-				$product_id,
-				$source,
-				(float) $qty_after,
-				self::IDEMPOTENCY_SECONDS
-			);
-		} else {
-			$sql = $wpdb->prepare(
-				"SELECT id FROM {$table}
-				 WHERE product_id = %d
-				   AND source = %s
-				   AND source_ref = %d
-				   AND qty_after = %f
-				   AND created_at >= (UTC_TIMESTAMP() - INTERVAL %d SECOND)
-				 LIMIT 1",
-				$product_id,
-				$source,
-				$source_ref,
-				(float) $qty_after,
-				self::IDEMPOTENCY_SECONDS
-			);
-		}
-
-		return (bool) $wpdb->get_var($sql);
 	}
 
 	private static function insert_entry(array $row) {
