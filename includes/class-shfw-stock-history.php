@@ -50,6 +50,7 @@ class SHFW_Stock_History {
 		// UI: Product Data tab + panel.
 		add_filter('woocommerce_product_data_tabs',          array(__CLASS__, 'render_product_data_tab'));
 		add_action('woocommerce_product_data_panels',        array(__CLASS__, 'render_product_data_panel'));
+		add_action('woocommerce_product_after_variable_attributes', array(__CLASS__, 'render_variation_history'), 10, 3);
 
 		// Asset enqueue + inline-note AJAX.
 		add_action('admin_enqueue_scripts',                  array(__CLASS__, 'enqueue_admin_assets'));
@@ -410,6 +411,14 @@ class SHFW_Stock_History {
 
 	public static function render_product_data_panel() {
 		$product_id = (int) get_the_ID();
+		$variation_id = isset($_GET['shfw_variation']) ? absint($_GET['shfw_variation']) : 0;
+		$variation = $variation_id ? get_post($variation_id) : null;
+		if ($variation && 'product_variation' === $variation->post_type
+			&& (int) $variation->post_parent === $product_id && current_user_can('edit_post', $product_id)) {
+			$product_id = $variation_id;
+		} else {
+			$variation_id = 0;
+		}
 		$offset     = isset($_GET['shfw_offset']) ? max(0, (int) $_GET['shfw_offset']) : 0;
 		$page_size  = self::PAGE_SIZE;
 		$rows       = self::fetch_history($product_id, $page_size + 1, $offset);
@@ -421,12 +430,64 @@ class SHFW_Stock_History {
 		<div id="shfw_stock_history_data" class="panel woocommerce_options_panel">
 			<div class="options_group">
 				<h4 style="margin-left: 12px;"><?php esc_html_e('Stock History', 'stock-history-for-woocommerce'); ?></h4>
+				<?php if ($variation_id) : ?>
+					<p style="margin-left: 12px;">
+						<?php /* translators: %d: variation ID */ echo esc_html(sprintf(__('Variation #%d', 'stock-history-for-woocommerce'), $variation_id)); ?>
+						<a href="<?php echo esc_url(remove_query_arg(array('shfw_variation', 'shfw_offset'))); ?>#shfw_stock_history_data"><?php esc_html_e('Back to parent stock history', 'stock-history-for-woocommerce'); ?></a>
+					</p>
+				<?php endif; ?>
 
 				<?php if (empty($rows) && $offset === 0) : ?>
 					<p style="margin-left: 12px; color: #666; font-style: italic;">
 						<?php esc_html_e('No stock changes have been recorded for this product yet.', 'stock-history-for-woocommerce'); ?>
 					</p>
 				<?php else : ?>
+					<?php self::render_history_table($rows, $product_id); ?>
+
+					<?php if ($has_more || $offset > 0) : ?>
+						<p style="margin: 8px 12px;">
+							<?php if ($offset > 0) : ?>
+								<a href="<?php echo esc_url(remove_query_arg('shfw_offset')); ?>#shfw_stock_history_data" class="button">
+									<?php esc_html_e('« Newest', 'stock-history-for-woocommerce'); ?>
+								</a>
+							<?php endif; ?>
+							<?php if ($has_more) : ?>
+								<a href="<?php echo esc_url(add_query_arg('shfw_offset', $offset + $page_size)); ?>#shfw_stock_history_data" class="button">
+									<?php esc_html_e('Older →', 'stock-history-for-woocommerce'); ?>
+								</a>
+							<?php endif; ?>
+						</p>
+					<?php endif; ?>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
+	}
+
+	/** The variation editor is loaded over AJAX; show a bounded preview and link to its paginated history. */
+	public static function render_variation_history($loop, $variation_data, $variation) {
+		if (!is_object($variation) || empty($variation->ID) || empty($variation->post_parent)
+			|| !current_user_can('edit_post', (int) $variation->post_parent)) {
+			return;
+		}
+		$product_id = (int) $variation->ID;
+		$rows = self::fetch_history($product_id, 5, 0);
+		$url = add_query_arg(array('shfw_variation' => $product_id, 'shfw_offset' => 0), get_edit_post_link((int) $variation->post_parent, 'raw'));
+		?>
+		<div class="shfw-variation-history">
+			<h4><?php esc_html_e('Stock History', 'stock-history-for-woocommerce'); ?></h4>
+			<?php if ($rows) : ?>
+				<?php self::render_history_table($rows, $product_id); ?>
+			<?php else : ?>
+				<p><?php esc_html_e('No stock changes have been recorded for this product yet.', 'stock-history-for-woocommerce'); ?></p>
+			<?php endif; ?>
+			<a href="<?php echo esc_url($url); ?>#shfw_stock_history_data"><?php esc_html_e('View all stock history', 'stock-history-for-woocommerce'); ?></a>
+		</div>
+		<?php
+	}
+
+	private static function render_history_table($rows, $product_id) {
+		?>
 					<table class="widefat striped shfw-stock-history-table" data-product-id="<?php echo esc_attr($product_id); ?>">
 						<colgroup>
 							<col class="shfw-col-date">
@@ -452,24 +513,6 @@ class SHFW_Stock_History {
 							<?php endforeach; ?>
 						</tbody>
 					</table>
-
-					<?php if ($has_more || $offset > 0) : ?>
-						<p style="margin: 8px 12px;">
-							<?php if ($offset > 0) : ?>
-								<a href="<?php echo esc_url(remove_query_arg('shfw_offset')); ?>#shfw_stock_history_data" class="button">
-									<?php esc_html_e('« Newest', 'stock-history-for-woocommerce'); ?>
-								</a>
-							<?php endif; ?>
-							<?php if ($has_more) : ?>
-								<a href="<?php echo esc_url(add_query_arg('shfw_offset', $offset + $page_size)); ?>#shfw_stock_history_data" class="button">
-									<?php esc_html_e('Older →', 'stock-history-for-woocommerce'); ?>
-								</a>
-							<?php endif; ?>
-						</p>
-					<?php endif; ?>
-				<?php endif; ?>
-			</div>
-		</div>
 		<?php
 	}
 
@@ -603,7 +646,8 @@ class SHFW_Stock_History {
 
 	private static function inline_css() {
 		return '
-			#shfw_stock_history_data .shfw-stock-history-table { width: calc(100% - 24px); margin: 8px 12px 12px; table-layout: fixed; }
+			#shfw_stock_history_data .shfw-stock-history-table, .shfw-variation-history .shfw-stock-history-table { width: calc(100% - 24px); margin: 8px 12px 12px; table-layout: fixed; }
+			.shfw-variation-history { clear: both; overflow-x: auto; padding: 12px; }
 			#shfw_stock_history_data .shfw-stock-history-table th,
 			#shfw_stock_history_data .shfw-stock-history-table td { padding: 8px 10px; vertical-align: middle; word-wrap: break-word; }
 			#shfw_stock_history_data .shfw-stock-history-table th { font-weight: 600; }

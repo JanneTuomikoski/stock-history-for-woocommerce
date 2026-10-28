@@ -24,6 +24,16 @@ msgstr ""
 msgid "Stock History"
 msgstr ""
 
+#. translators: %d: variation ID
+msgid "Variation #%d"
+msgstr ""
+
+msgid "Back to parent stock history"
+msgstr ""
+
+msgid "View all stock history"
+msgstr ""
+
 #: includes/class-shfw-stock-history.php:468
 msgid "No stock changes have been recorded for this product yet."
 msgstr ""

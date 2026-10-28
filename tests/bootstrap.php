@@ -45,6 +45,14 @@ function wp_kses_post($text) { return $text; }
 function get_the_ID() { return $GLOBALS['currentProductId']; }
 function get_post($id) { return $GLOBALS['posts'][$id] ?? null; }
 function get_edit_post_link($id) { return $GLOBALS['hpos'] ? null : 'https://example.test/wp-admin/post.php?post=' . $id . '&action=edit'; }
+function add_query_arg($key, $value = null, $url = null) {
+    if (is_array($key)) { $args = $key; $url = $value; } else { $args = array($key => $value); }
+    $url = $url ?: 'https://example.test/wp-admin/post.php?post=10&' . http_build_query($_GET);
+    $parts = parse_url($url); parse_str($parts['query'] ?? '', $query);
+    foreach ($args as $name => $item) { if ($item === false) unset($query[$name]); else $query[$name] = $item; }
+    return 'https://example.test' . ($parts['path'] ?? '/') . '?' . http_build_query($query);
+}
+function remove_query_arg($keys) { return add_query_arg(array_fill_keys((array) $keys, false)); }
 function current_user_can($capability, $id = null) { return $GLOBALS['permissions'][$capability . ($id === null ? '' : ':' . $id)] ?? false; }
 function wp_unslash($text) { return stripslashes($text); }
 function sanitize_textarea_field($text) { return trim(strip_tags($text)); }
@@ -156,7 +164,9 @@ class AuditDatabase {
     }
     public function get_results($sql) {
         preg_match('/product_id = (\d+)/', $sql, $product);
-        return array_map(static fn ($row) => (object) $row, array_values(array_filter($this->rows, static fn ($row) => $row['product_id'] === (int) $product[1])));
+        $rows = array_reverse(array_values(array_filter($this->rows, static fn ($row) => $row['product_id'] === (int) $product[1])));
+        preg_match('/LIMIT (\d+)(?: OFFSET (\d+))?/', $sql, $page);
+        return array_map(static fn ($row) => (object) $row, array_slice($rows, isset($page[2]) ? (int) $page[2] : 0, isset($page[1]) ? (int) $page[1] : count($rows)));
     }
     public function update($table, $data, $where, $formats = null, $whereFormats = null) {
         $this->lastNoteAttempt = $data['note'];
@@ -179,6 +189,7 @@ function check($condition, $message) {
     ++$checks; echo 'ok ' . $message . PHP_EOL;
 }
 function resetScenario() {
+    $_GET = $_POST = array();
     $GLOBALS['wpdb'] = new AuditDatabase();
     $GLOBALS['stocks'] = $GLOBALS['products'] = [];
     $GLOBALS['nonceValid'] = true;

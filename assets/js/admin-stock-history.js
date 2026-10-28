@@ -106,6 +106,9 @@
 	}
 
 	window.addEventListener('load', function () {
+		if (window.location.hash === '#shfw_stock_history_data') {
+			$('ul.wc-tabs a[href="#shfw_stock_history_data"]').trigger('click');
+		}
 		$(document).on('click', '.shfw-stock-history-note', startEdit);
 	});
 })(jQuery);

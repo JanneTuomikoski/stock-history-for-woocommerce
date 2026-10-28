@@ -18,7 +18,7 @@ Sources:
 ## Features
 
 - Stock History tab in the WooCommerce Product Data box
-- Per-variation history under each variation's edit screen
+- Per-variation history preview under each variation, with a link to its full paginated history
 - Inline-editable notes on any history entry (500 char limit)
 - Order entries link back to the related order
 - UTC storage, site-timezone display
