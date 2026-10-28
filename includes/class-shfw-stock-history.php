@@ -166,6 +166,18 @@ class SHFW_Stock_History {
 			}
 
 			$qty_delta = is_null($qty_before) ? $qty_after : ($qty_after - $qty_before);
+			$source_ref = null;
+			// Order quantity edits do not fire the reduce/restore item actions. Their stock hook is the
+			// event to record, with the item still available on the adjustment function's call stack.
+			foreach (debug_backtrace(0, 30) as $frame) {
+				if (isset($frame['function'], $frame['args'][0])
+					&& 'wc_maybe_adjust_line_item_product_stock' === $frame['function']
+					&& $frame['args'][0] instanceof WC_Order_Item_Product) {
+					$source = 'order_adjust';
+					$source_ref = (int) $frame['args'][0]->get_order_id();
+					break;
+				}
+			}
 
 			self::insert_entry(array(
 				'product_id' => $product_id,
@@ -173,7 +185,7 @@ class SHFW_Stock_History {
 				'qty_after'  => $qty_after,
 				'qty_delta'  => $qty_delta,
 				'source'     => $source,
-				'source_ref' => null,
+				'source_ref' => $source_ref,
 				'user_id'    => get_current_user_id() ?: null,
 			));
 		} catch (Throwable $e) {
@@ -195,7 +207,6 @@ class SHFW_Stock_History {
 			}
 			if ('wc_reduce_stock_levels' === $frame['function']
 				|| 'wc_increase_stock_levels' === $frame['function']
-				|| 'wc_maybe_adjust_line_item_product_stock' === $frame['function']
 				|| 'wc_restock_refunded_items' === $frame['function']) {
 				return true;
 			}
@@ -543,6 +554,7 @@ class SHFW_Stock_History {
 
 			case 'order_reduce':
 			case 'order_restore':
+			case 'order_adjust':
 			case 'refund':
 				$order_id = (int) $row->source_ref;
 				if ($order_id <= 0) {
@@ -555,6 +567,9 @@ class SHFW_Stock_History {
 				} elseif ('order_restore' === $row->source) {
 					/* translators: %d: order ID */
 					$label = sprintf(__('Order #%d (restored)', 'stock-history-for-woocommerce'), $order_id);
+				} elseif ('order_adjust' === $row->source) {
+					/* translators: %d: order ID */
+					$label = sprintf(__('Order #%d (quantity adjusted)', 'stock-history-for-woocommerce'), $order_id);
 				} else {
 					/* translators: %d: order ID */
 					$label = sprintf(__('Order #%d', 'stock-history-for-woocommerce'), $order_id);

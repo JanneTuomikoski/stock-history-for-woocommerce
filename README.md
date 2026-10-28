@@ -13,6 +13,7 @@ Sources:
 | `manual`       | Admin UI, REST API, or any direct call through `WC_Product::set_stock_quantity()` |
 | `order_reduce` | Stock reduction when an order is placed / transitions to a reducing status   |
 | `order_restore`| Stock restoration when an order is cancelled or refunded                     |
+| `order_adjust` | Stock adjustment when an order line quantity changes or the line is removed |
 
 ## Features
 

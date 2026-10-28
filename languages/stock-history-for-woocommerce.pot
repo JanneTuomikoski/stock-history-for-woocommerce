@@ -88,6 +88,10 @@ msgstr ""
 msgid "Order #%d"
 msgstr ""
 
+#. translators: %d: order ID
+msgid "Order #%d (quantity adjusted)"
+msgstr ""
+
 #: includes/class-shfw-stock-history.php:569
 msgid "System"
 msgstr ""

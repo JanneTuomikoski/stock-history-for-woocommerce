@@ -1,0 +1,7 @@
+# Regression checks
+
+Run `php tests/run.php`. The self-contained runner needs no database, WordPress installation, mail or network. Its small WordPress/WooCommerce doubles exercise the plugin's hook and persistence boundaries.
+
+To repeat the checks with official WooCommerce functions, set `SHFW_WC_SOURCE_DIR` to a directory containing the unmodified `wc-stock-functions.php`, `wc-order-functions.php`, and `wc-admin-functions.php` from the WooCommerce version under test, then run the same command. The first two files come from `includes/`, and the third from `includes/admin/`.
+
+The isolated checks supplement full WordPress/WooCommerce integration testing; they do not replace it.
