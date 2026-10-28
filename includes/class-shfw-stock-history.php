@@ -685,6 +685,7 @@ class SHFW_Stock_History {
 			.shfw-stock-history-note input { width: 100%; box-sizing: border-box; padding: 4px 6px; }
 			.shfw-stock-history-note.is-saving { opacity: 0.6; }
 			.shfw-stock-history-note.is-error  { box-shadow: inset 0 0 0 2px #c62828; }
+			.shfw-note-error { display: block; color: #c62828; font-size: 12px; }
 		';
 	}
 
@@ -728,9 +729,11 @@ class SHFW_Stock_History {
 		}
 
 		$note = isset($_POST['note']) ? sanitize_textarea_field(wp_unslash($_POST['note'])) : '';
-		if (strlen($note) > self::NOTE_MAX_LENGTH) {
-			$note = substr($note, 0, self::NOTE_MAX_LENGTH);
+		// PCRE's UTF-8 mode counts code points and never splits a multibyte character; no mbstring dependency.
+		if (preg_match('/^.{0,' . self::NOTE_MAX_LENGTH . '}/us', $note, $matches) !== 1) {
+			wp_send_json_error(array('message' => 'invalid_note'), 400);
 		}
+		$note = $matches[0];
 
 		$updated = $wpdb->update(
 			self::table_name(),

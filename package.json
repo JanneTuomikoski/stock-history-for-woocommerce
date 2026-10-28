@@ -1,0 +1,7 @@
+{
+  "name": "stock-history-for-woocommerce-tests",
+  "private": true,
+  "engines": { "node": "^20.19.0 || ^22.13.0 || >=24.0.0" },
+  "scripts": { "test": "node --test tests/js/*.test.cjs" },
+  "devDependencies": { "jquery": "3.7.1", "jsdom": "29.1.1" }
+}

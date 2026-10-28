@@ -18,7 +18,7 @@
 		}
 	}
 
-	function commit($cell, $input, originalText) {
+	function commit($cell, $input, originalText, retry) {
 		var entryId = parseInt($cell.attr('data-entry-id'), 10);
 		var newText = $input.val();
 
@@ -33,6 +33,19 @@
 		}
 
 		$cell.addClass('is-saving');
+		$cell.find('.shfw-note-error').remove();
+		$input.prop('disabled', true).removeAttr('aria-invalid');
+
+		function failed() {
+			$cell.removeClass('is-saving');
+			setError($cell, true);
+			// Preserve the draft and let Enter/blur retry rather than discard the user's text.
+			retry();
+			$input.prop('disabled', false).attr('aria-invalid', 'true');
+			$('<span class="shfw-note-error" role="alert"></span>')
+				.text((L10N.i18n && L10N.i18n.saveError) || 'Failed to save note. Please try again.')
+				.appendTo($cell);
+		}
 
 		$.post(L10N.ajaxurl, {
 			action:      'shfw_update_note',
@@ -46,15 +59,10 @@
 					var saved = (response.data && typeof response.data.note === 'string') ? response.data.note : newText;
 					$input.replaceWith(buildSpan(saved));
 				} else {
-					setError($cell, true);
-					$input.replaceWith(buildSpan(originalText));
+					failed();
 				}
 			})
-			.fail(function () {
-				$cell.removeClass('is-saving');
-				setError($cell, true);
-				$input.replaceWith(buildSpan(originalText));
-			});
+			.fail(failed);
 	}
 
 	function buildSpan(text) {
@@ -77,7 +85,12 @@
 		var $span        = $cell.find('.shfw-note-text');
 		var originalText = $span.text();
 
-		var $input = $('<input type="text" />').attr('maxlength', MAX).val(originalText);
+		// maxlength counts UTF-16 units. Apply the server's code-point limit on input.
+		var $input = $('<input type="text" />').attr('maxlength', MAX * 2).val(originalText);
+		$input.on('input', function () {
+			var characters = Array.from($input.val());
+			if (characters.length > MAX) { $input.val(characters.slice(0, MAX).join('')); }
+		});
 		$span.replaceWith($input);
 		$input.trigger('focus').trigger('select');
 
@@ -85,11 +98,12 @@
 		var finish = function () {
 			if (committed) { return; }
 			committed = true;
-			commit($cell, $input, originalText);
+			commit($cell, $input, originalText, function () { committed = false; });
 		};
 		var cancel = function () {
 			if (committed) { return; }
 			committed = true;
+			$cell.find('.shfw-note-error').remove();
 			$input.replaceWith(buildSpan(originalText));
 		};
 
