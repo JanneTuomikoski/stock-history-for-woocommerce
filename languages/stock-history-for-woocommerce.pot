@@ -34,6 +34,9 @@ msgstr ""
 msgid "View all stock history"
 msgstr ""
 
+msgid "Stock is managed by the parent product. This is its shared stock history."
+msgstr ""
+
 #: includes/class-shfw-stock-history.php:468
 msgid "No stock changes have been recorded for this product yet."
 msgstr ""

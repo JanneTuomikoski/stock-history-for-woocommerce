@@ -231,7 +231,7 @@ class SHFW_Stock_History {
 			}
 
 			$product    = $change['product'];
-			$product_id = $product->get_id();
+			$product_id = (int) $product->get_stock_managed_by_id();
 			$qty_before = isset($change['from']) ? (float) $change['from'] : null;
 			$qty_after  = isset($change['to'])   ? (float) $change['to']   : null;
 
@@ -273,7 +273,11 @@ class SHFW_Stock_History {
 				return;
 			}
 
-			$product_id = (int) ($item->get_variation_id() ?: $item->get_product_id());
+			$product = $item->get_product();
+			if (!$product instanceof WC_Product) {
+				return;
+			}
+			$product_id = (int) $product->get_stock_managed_by_id();
 			if ($product_id <= 0) {
 				return;
 			}
@@ -321,7 +325,10 @@ class SHFW_Stock_History {
 				return;
 			}
 
-			$product_id = (int) $product_id;
+			if (!$product instanceof WC_Product) {
+				return;
+			}
+			$product_id = (int) $product->get_stock_managed_by_id();
 			if ($product_id <= 0) {
 				return;
 			}
@@ -415,7 +422,8 @@ class SHFW_Stock_History {
 		$variation = $variation_id ? get_post($variation_id) : null;
 		if ($variation && 'product_variation' === $variation->post_type
 			&& (int) $variation->post_parent === $product_id && current_user_can('edit_post', $product_id)) {
-			$product_id = $variation_id;
+			$variation_product = wc_get_product($variation_id);
+			$product_id = $variation_product ? (int) $variation_product->get_stock_managed_by_id() : $variation_id;
 		} else {
 			$variation_id = 0;
 		}
@@ -436,6 +444,7 @@ class SHFW_Stock_History {
 						<a href="<?php echo esc_url(remove_query_arg(array('shfw_variation', 'shfw_offset'))); ?>#shfw_stock_history_data"><?php esc_html_e('Back to parent stock history', 'stock-history-for-woocommerce'); ?></a>
 					</p>
 				<?php endif; ?>
+				<?php if ($variation_id && $product_id !== $variation_id) self::render_shared_stock_notice(); ?>
 
 				<?php if (empty($rows) && $offset === 0) : ?>
 					<p style="margin-left: 12px; color: #666; font-style: italic;">
@@ -470,12 +479,15 @@ class SHFW_Stock_History {
 			|| !current_user_can('edit_post', (int) $variation->post_parent)) {
 			return;
 		}
-		$product_id = (int) $variation->ID;
+		$variation_id = (int) $variation->ID;
+		$product = wc_get_product($variation_id);
+		$product_id = $product ? (int) $product->get_stock_managed_by_id() : $variation_id;
 		$rows = self::fetch_history($product_id, 5, 0);
-		$url = add_query_arg(array('shfw_variation' => $product_id, 'shfw_offset' => 0), get_edit_post_link((int) $variation->post_parent, 'raw'));
+		$url = add_query_arg(array('shfw_variation' => $variation_id, 'shfw_offset' => 0), get_edit_post_link((int) $variation->post_parent, 'raw'));
 		?>
 		<div class="shfw-variation-history">
 			<h4><?php esc_html_e('Stock History', 'stock-history-for-woocommerce'); ?></h4>
+			<?php if ($product_id !== $variation_id) self::render_shared_stock_notice(); ?>
 			<?php if ($rows) : ?>
 				<?php self::render_history_table($rows, $product_id); ?>
 			<?php else : ?>
@@ -484,6 +496,10 @@ class SHFW_Stock_History {
 			<a href="<?php echo esc_url($url); ?>#shfw_stock_history_data"><?php esc_html_e('View all stock history', 'stock-history-for-woocommerce'); ?></a>
 		</div>
 		<?php
+	}
+
+	private static function render_shared_stock_notice() {
+		echo '<p>' . esc_html__('Stock is managed by the parent product. This is its shared stock history.', 'stock-history-for-woocommerce') . '</p>';
 	}
 
 	private static function render_history_table($rows, $product_id) {

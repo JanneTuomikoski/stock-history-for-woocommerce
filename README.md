@@ -4,7 +4,7 @@ Audit log of every WooCommerce stock change - manual edits, order reductions, an
 
 ## What it records
 
-Every change to a product's stock level is written to a custom table with the date, delta, new stock, source, and the user who triggered it. Variations are tracked separately by variation ID.
+Every change to a product's stock level is written to a custom table with the date, delta, new stock, source, and the user who triggered it. Variations with their own stock are tracked separately. When variations inherit stock management, changes belong to the parent product's shared inventory and that shared history is shown in their previews.
 
 Sources:
 
